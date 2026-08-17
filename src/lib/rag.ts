@@ -25,6 +25,32 @@ export interface RetrievedChunk {
 
 export const DEFAULT_RETRIEVAL_LIMIT = 3;
 
+/** Budget token untuk konteks RAG (menyisakan ruang riwayat & jawaban). */
+export const DEFAULT_RAG_CONTEXT_TOKENS = 200;
+
+export type RagContextRetriever = (question: string) => Promise<string>;
+
+/**
+ * Rangkai pipeline RAG menjadi satu fungsi: retrieve → susun konteks.
+ * Panggil dari ChatSession via `retrieveContext`.
+ */
+export function createRagContextRetriever(
+  provider: EmbeddingProvider,
+  store: ChunkStore,
+  limit: number = DEFAULT_RETRIEVAL_LIMIT,
+  maxTokens: number = DEFAULT_RAG_CONTEXT_TOKENS,
+): RagContextRetriever {
+  return async question => {
+    const chunks = await retrieveRelevantChunks(
+      question,
+      provider,
+      store,
+      limit,
+    );
+    return buildRagContext(chunks, maxTokens);
+  };
+}
+
 /**
  * Cari chunk paling relevan untuk sebuah pertanyaan.
  * MVP memakai cosine similarity di JS; untuk korpus besar pindah ke

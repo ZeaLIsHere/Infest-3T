@@ -17,15 +17,27 @@ import {
   View,
 } from 'react-native';
 import ChatBubble from '../components/ChatBubble';
+import {getAllChunkEmbeddings} from '../db/materialRepository';
 import {recordStudyMinutes} from '../db/studyRepository';
-import type {Message} from '../lib/contextWindow';
+import {DEFAULT_MAX_TOKENS, type Message} from '../lib/contextWindow';
+import {NotInstalledEmbeddingProvider} from '../lib/embedding';
 import {ChatSession, MlcLlmEngine} from '../lib/llm';
+import {createRagContextRetriever, type ChunkStore} from '../lib/rag';
 import {toDateKey} from '../lib/streak';
 import {colors, radius, spacing} from '../lib/theme';
 
 const SYSTEM_PROMPT =
   'Kamu adalah asisten belajar Pijar 3T untuk siswa SMP/SMA di Indonesia. ' +
   'Jawab singkat, jelas, ramah, dan sesuai kurikulum. Gunakan bahasa Indonesia.';
+
+// Sumber chunk RAG dari SQLite. Embedding memakai USE Lite (native TFLite
+// menyusul); selama provider native belum terpasang, retriever gagal dan
+// chat berjalan tanpa konteks materi (degradasi halus).
+const chunkStore: ChunkStore = {all: getAllChunkEmbeddings};
+const ragContextRetriever = createRagContextRetriever(
+  new NotInstalledEmbeddingProvider(),
+  chunkStore,
+);
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -34,6 +46,19 @@ export default function ChatScreen() {
   const sessionRef = useRef<ChatSession | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
   const sessionStartRef = useRef<Date | null>(null);
+
+  // Ambil konteks RAG untuk pertanyaan; bila gagal (embedding belum
+  // terpasang / korpus kosong), kembalikan string kosong agar chat tetap jalan.
+  const retrieveContext = useCallback(
+    async (question: string): Promise<string> => {
+      try {
+        return await ragContextRetriever(question);
+      } catch {
+        return '';
+      }
+    },
+    [],
+  );
 
   // Catat waktu belajar: selisih sejak layar dibuka, dibulatkan ke bawah
   // (minimal 1 menit agar data tidak terlalu bising).
@@ -53,14 +78,19 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    const session = new ChatSession(new MlcLlmEngine(), SYSTEM_PROMPT);
+    const session = new ChatSession(
+      new MlcLlmEngine(),
+      SYSTEM_PROMPT,
+      DEFAULT_MAX_TOKENS,
+      retrieveContext,
+    );
     sessionRef.current = session;
     // Pelepasan memori manual saat screen ditutup (AGENT.md §9).
     return () => {
       session.dispose();
       sessionRef.current = null;
     };
-  }, []);
+  }, [retrieveContext]);
 
   useEffect(() => {
     sessionStartRef.current = new Date();

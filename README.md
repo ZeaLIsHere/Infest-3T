@@ -51,8 +51,8 @@ SYNC_API_URL=
 
 Fondasi JS/TS sudah terpasang: tooling (TS strict, ESLint, Prettier, Jest), skema
 database, logika inti (context window 512 token, klasifikasi RAM, streak,
-antrean sinkronisasi HTTP saat online, dan core RAG: chunking + embedding +
-retrieval cosine), serta UI MVP dark-mode. Semua modul native (MLC LLM,
+antrean sinkronisasi HTTP saat online, dan RAG (chunking + embedding +
+retrieval cosine) yang tersambung ke layar Tanya AI), serta UI MVP dark-mode. Semua modul native (MLC LLM,
 TFLite USE Lite, sqlite-vec, `android/`) sengaja dipisah di belakang kontrak
 (`LlmEngine`, `EmbeddingProvider`, `SyncTransport`) supaya bisa diuji tanpa
 build Android.

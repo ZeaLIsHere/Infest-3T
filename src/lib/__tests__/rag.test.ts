@@ -1,5 +1,10 @@
 import type {EmbeddingProvider} from '../embedding';
-import {buildRagContext, retrieveRelevantChunks, type ChunkStore} from '../rag';
+import {
+  buildRagContext,
+  createRagContextRetriever,
+  retrieveRelevantChunks,
+  type ChunkStore,
+} from '../rag';
 
 const queryVector = new Float32Array([1, 0, 0]);
 
@@ -8,7 +13,9 @@ const provider: EmbeddingProvider = {
   embed: jest.fn(async () => queryVector),
 };
 
-function storeWith(chunks: Array<{id: number; content: string; vector: number[]}>): ChunkStore {
+function storeWith(
+  chunks: Array<{id: number; content: string; vector: number[]}>,
+): ChunkStore {
   return {
     all: jest.fn(async () =>
       chunks.map(chunk => ({
@@ -49,6 +56,26 @@ describe('retrieveRelevantChunks', () => {
     const result = await retrieveRelevantChunks('q', provider, store, 2);
 
     expect(result).toHaveLength(2);
+  });
+});
+
+describe('createRagContextRetriever', () => {
+  it('merangkai retrieve + susun konteks dari store', async () => {
+    const store = storeWith([
+      {id: 1, content: 'materi fotosintesis', vector: [1, 0, 0]},
+      {id: 2, content: 'materi lain', vector: [0, 1, 0]},
+    ]);
+    const retriever = createRagContextRetriever(provider, store, 1);
+
+    const context = await retriever('Apa itu fotosintesis?');
+
+    expect(context).toContain('materi fotosintesis');
+    expect(context).not.toContain('materi lain');
+  });
+
+  it('mengembalikan string kosong bila tidak ada chunk', async () => {
+    const retriever = createRagContextRetriever(provider, storeWith([]));
+    expect(await retriever('pertanyaan')).toBe('');
   });
 });
 

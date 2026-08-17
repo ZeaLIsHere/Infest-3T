@@ -4,7 +4,12 @@
  * bridge android/ pada fase 1 (PRD §11). Kelas di sini menyediakan
  * kontrak + placeholder yang bisa diuji tanpa modul native.
  */
-import {DEFAULT_MAX_TOKENS, Message, trimToTokenBudget} from './contextWindow';
+import {
+  DEFAULT_MAX_TOKENS,
+  estimateTokens,
+  Message,
+  trimToTokenBudget,
+} from './contextWindow';
 
 /** Kontrak engine LLM luring. */
 export interface LlmEngine {
@@ -46,20 +51,40 @@ export class MlcLlmEngine implements LlmEngine {
 /**
  * Sesi percakapan: menyimpan riwayat, memotong context window sesuai
  * budget token, dan meneruskan prompt ke engine.
+ *
+ * `retrieveContext` (opsional) dipakai untuk RAG: menyisipkan konteks
+ * materi yang relevan sebagai pesan system, ikut dihitung dalam budget
+ * token. Total (system prompt + pesan) tetap ≤ maxTokens.
  */
+export type ContextRetriever = (question: string) => Promise<string>;
+
 export class ChatSession {
   private readonly history: Message[] = [];
+  private readonly messageBudget: number;
 
   constructor(
     private readonly engine: LlmEngine,
     private readonly systemPrompt: string,
-    private readonly maxTokens: number = DEFAULT_MAX_TOKENS,
-  ) {}
+    maxTokens: number = DEFAULT_MAX_TOKENS,
+    private readonly retrieveContext?: ContextRetriever,
+  ) {
+    // Sisakan ruang token untuk system prompt agar total tetap ≤ maxTokens.
+    this.messageBudget = Math.max(1, maxTokens - estimateTokens(systemPrompt));
+  }
 
   async ask(question: string): Promise<string> {
     this.history.push({role: 'user', content: question});
-    const trimmed = trimToTokenBudget(this.history, this.maxTokens);
-    const answer = await this.engine.infer(this.systemPrompt, trimmed);
+    let messages = trimToTokenBudget(this.history, this.messageBudget);
+    if (this.retrieveContext) {
+      const context = await this.retrieveContext(question);
+      if (context.length > 0) {
+        messages = trimToTokenBudget(
+          [{role: 'system', content: context}, ...messages],
+          this.messageBudget,
+        );
+      }
+    }
+    const answer = await this.engine.infer(this.systemPrompt, messages);
     this.history.push({role: 'assistant', content: answer});
     return answer;
   }
