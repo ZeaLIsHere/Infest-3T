@@ -33,6 +33,16 @@ const INSERT_CHUNK = `
 const SELECT_ALL_CHUNKS = `
   SELECT id, content, embedding FROM material_chunks;
 `;
+const SELECT_MATERIALS = `
+  SELECT id, title, subject, source_path FROM materials ORDER BY id DESC;
+`;
+
+export interface MaterialRow {
+  id: number;
+  title: string;
+  subject: string;
+  sourcePath: string | null;
+}
 
 /**
  * Simpan materi beserta chunk + embedding-nya.
@@ -55,6 +65,28 @@ export async function saveMaterial(input: NewMaterial): Promise<number> {
     ]);
   }
   return materialId;
+}
+
+/** Ambil daftar materi (terbaru dulu). */
+export async function getAllMaterials(): Promise<MaterialRow[]> {
+  const db = await openDatabase();
+  const [results] = await db.executeSql(SELECT_MATERIALS);
+  const materials: MaterialRow[] = [];
+  for (let i = 0; i < results.rows.length; i++) {
+    const row = results.rows.item(i) as {
+      id: number;
+      title: string;
+      subject: string;
+      source_path: string | null;
+    };
+    materials.push({
+      id: row.id,
+      title: row.title,
+      subject: row.subject,
+      sourcePath: row.source_path,
+    });
+  }
+  return materials;
 }
 
 /** Ambil seluruh chunk + embedding untuk retrieval. */

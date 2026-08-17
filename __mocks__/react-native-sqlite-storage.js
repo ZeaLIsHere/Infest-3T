@@ -106,6 +106,22 @@ function executeSqlSync(sql, params = []) {
     return {rows: rowsFrom(rows), insertId: 0, rowsAffected: rows.length};
   }
 
+  if (
+    statement.startsWith(
+      'SELECT id, title, subject, source_path FROM materials',
+    )
+  ) {
+    const rows = materials
+      .map((material, index) => ({
+        id: index + 1,
+        title: material.title,
+        subject: material.subject,
+        source_path: material.sourcePath,
+      }))
+      .reverse();
+    return {rows: rowsFrom(rows), insertId: 0, rowsAffected: rows.length};
+  }
+
   throw new Error(`Mock tidak mengenali statement: ${sql}`);
 }
 

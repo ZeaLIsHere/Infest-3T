@@ -4,7 +4,7 @@
  * screen ditutup (AGENT.md §9). Lama membuka layar ini dicatat sebagai
  * sesi belajar harian (SQLite) untuk perhitungan streak.
  */
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -19,10 +19,11 @@ import {
 import ChatBubble from '../components/ChatBubble';
 import {getAllChunkEmbeddings} from '../db/materialRepository';
 import {recordStudyMinutes} from '../db/studyRepository';
-import {DEFAULT_MAX_TOKENS, type Message} from '../lib/contextWindow';
-import {NotInstalledEmbeddingProvider} from '../lib/embedding';
+import type {Message} from '../lib/contextWindow';
+import {HashEmbeddingProvider} from '../lib/embedding';
 import {ChatSession, MlcLlmEngine} from '../lib/llm';
 import {createRagContextRetriever, type ChunkStore} from '../lib/rag';
+import {getMemoryProfile} from '../lib/memory';
 import {toDateKey} from '../lib/streak';
 import {colors, radius, spacing} from '../lib/theme';
 
@@ -30,12 +31,13 @@ const SYSTEM_PROMPT =
   'Kamu adalah asisten belajar Pijar 3T untuk siswa SMP/SMA di Indonesia. ' +
   'Jawab singkat, jelas, ramah, dan sesuai kurikulum. Gunakan bahasa Indonesia.';
 
-// Sumber chunk RAG dari SQLite. Embedding memakai USE Lite (native TFLite
-// menyusul); selama provider native belum terpasang, retriever gagal dan
-// chat berjalan tanpa konteks materi (degradasi halus).
+// Sumber chunk RAG dari SQLite. Embedding memakai HashEmbeddingProvider
+// (deterministik, tanpa native) untuk MVP; ganti ke USE Lite via TFLite
+// saat build native terpasang. Bila retrieval gagal, chat tetap berjalan
+// tanpa konteks materi (degradasi halus).
 const chunkStore: ChunkStore = {all: getAllChunkEmbeddings};
 const ragContextRetriever = createRagContextRetriever(
-  new NotInstalledEmbeddingProvider(),
+  new HashEmbeddingProvider(),
   chunkStore,
 );
 
@@ -60,6 +62,9 @@ export default function ChatScreen() {
     [],
   );
 
+  // Batas context window mengikuti profil RAM perangkat (PRD §7).
+  const maxTokens = useMemo(() => getMemoryProfile().contextWindowTokens, []);
+
   // Catat waktu belajar: selisih sejak layar dibuka, dibulatkan ke bawah
   // (minimal 1 menit agar data tidak terlalu bising).
   const flushStudyTime = useCallback(() => {
@@ -81,7 +86,7 @@ export default function ChatScreen() {
     const session = new ChatSession(
       new MlcLlmEngine(),
       SYSTEM_PROMPT,
-      DEFAULT_MAX_TOKENS,
+      maxTokens,
       retrieveContext,
     );
     sessionRef.current = session;
@@ -90,7 +95,7 @@ export default function ChatScreen() {
       session.dispose();
       sessionRef.current = null;
     };
-  }, [retrieveContext]);
+  }, [maxTokens, retrieveContext]);
 
   useEffect(() => {
     sessionStartRef.current = new Date();
