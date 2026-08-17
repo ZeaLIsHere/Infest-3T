@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+
+# iOS
+ios/Pods/
+ios/build/
+
+# Bundling
+bundle/
+*.jsbundle
+
+# Logs & cache
+*.log
+.eslintcache
+.history/
+.rn/
+
+# Environment
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
