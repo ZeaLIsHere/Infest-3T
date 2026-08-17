@@ -25,6 +25,9 @@ bundle/
 .env
 .env.local
 
+# Server sync data
+server/data/
+
 # Editor
 .vscode/
 .idea/

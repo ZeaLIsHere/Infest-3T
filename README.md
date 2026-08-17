@@ -65,6 +65,18 @@ retrieval per-chunk. Kekurangan: dominan bahasa Inggris. Karena dipisah di
 belakang `EmbeddingProvider`, bisa diganti (mis. IndoSBERT INT8 / MUSE untuk
 RAM ≥ 3GB) bila evaluasi kualitas bahasa Indonesia kurang memadai.
 
+## Server sinkronisasi (dev)
+
+Server MVP tanpa dependensi untuk menerima batch catatan dari aplikasi:
+
+```bash
+node server/index.js            # PORT default 3000
+curl -X POST http://localhost:3000/sync -d '{"records":[]}'
+```
+
+Atur `SYNC_API_URL` di `.env` mengarah ke `http://<IP-server>:3000/sync`
+agar sinkronisasi otomatis saat perangkat online.
+
 ## Langkah berikutnya
 
 1. Scaffold native: jalankan `npx @react-native-community/cli init` untuk
