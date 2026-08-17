@@ -6,6 +6,7 @@
  */
 import type {StudySession} from '../lib/streak';
 import {openDatabase} from './index';
+import {enqueueSyncRecord} from './syncRepository';
 
 const SELECT_MINUTES_BY_DATE = `
   SELECT minutes FROM study_sessions WHERE date = ? LIMIT 1;
@@ -37,6 +38,13 @@ export async function recordStudyMinutes(
     await db.executeSql(ADD_MINUTES, [minutes, date]);
   } else {
     await db.executeSql(INSERT_SESSION, [date, minutes]);
+  }
+
+  // Progress belajar ini wajib sampai ke guru: antrekan untuk sinkronisasi.
+  try {
+    await enqueueSyncRecord({type: 'study_session', date, minutes});
+  } catch {
+    // Gagal mengantre sinkronisasi tidak boleh menggagalkan pencatatan belajar.
   }
 }
 

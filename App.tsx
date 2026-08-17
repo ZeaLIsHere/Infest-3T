@@ -8,9 +8,14 @@ import {
   type Theme,
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 import {StatusBar} from 'react-native';
 import {initDatabase} from './src/db';
+import {SqliteSyncStore} from './src/db/syncRepository';
+import {subscribeConnection} from './src/lib/network';
+import {AsyncSyncQueue} from './src/lib/sync';
+import {SyncService} from './src/lib/syncService';
+import {HttpSyncTransport} from './src/lib/syncTransport';
 import {colors} from './src/lib/theme';
 import ChatScreen from './src/screens/ChatScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -41,10 +46,23 @@ const darkTheme: Theme = {
 };
 
 function App() {
+  const syncServiceRef = useRef<SyncService | null>(null);
+
   useEffect(() => {
     initDatabase().catch(() => {
       // DB belum tersedia saat pertama dibuka: inisialisasi berikutnya akan mencoba lagi.
     });
+    // Sinkronisasi asinkron: flush antrean otomatis saat perangkat online.
+    const syncService = new SyncService(
+      new AsyncSyncQueue(new HttpSyncTransport(), new SqliteSyncStore()),
+      listener => subscribeConnection(status => listener(status === 'online')),
+    );
+    syncServiceRef.current = syncService;
+    syncService.start();
+    return () => {
+      syncService.stop();
+      syncServiceRef.current = null;
+    };
   }, []);
 
   return (

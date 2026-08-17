@@ -42,10 +42,9 @@ export const CREATE_TABLES_SQL: readonly string[] = [
     UNIQUE (material_id, chunk_index)
   );`,
   `CREATE TABLE IF NOT EXISTS ${TABLES.syncQueue} (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     payload TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    synced_at TEXT
+    created_at INTEGER NOT NULL
   );`,
 ];
 
