@@ -1,14 +1,15 @@
 /**
  * Layar Tanya AI: chatbot luring (MLC LLM, context window ≤ 512 token).
- * Riwayat dipotong otomatis oleh ChatSession; memori dilepas manual
- * saat screen ditutup (AGENT.md §9).
+ * Riwayat dipotong otomatis oleh ChatSession; memori dilepas manual saat
+ * screen ditutup (AGENT.md §9). Lama membuka layar ini dicatat sebagai
+ * sesi belajar harian (SQLite) untuk perhitungan streak.
  */
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,8 +17,10 @@ import {
   View,
 } from 'react-native';
 import ChatBubble from '../components/ChatBubble';
+import {recordStudyMinutes} from '../db/studyRepository';
 import type {Message} from '../lib/contextWindow';
 import {ChatSession, MlcLlmEngine} from '../lib/llm';
+import {toDateKey} from '../lib/streak';
 import {colors, radius, spacing} from '../lib/theme';
 
 const SYSTEM_PROMPT =
@@ -30,6 +33,24 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const sessionRef = useRef<ChatSession | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
+  const sessionStartRef = useRef<Date | null>(null);
+
+  // Catat waktu belajar: selisih sejak layar dibuka, dibulatkan ke bawah
+  // (minimal 1 menit agar data tidak terlalu bising).
+  const flushStudyTime = useCallback(() => {
+    const start = sessionStartRef.current;
+    if (!start) {
+      return;
+    }
+    const minutes = Math.floor((Date.now() - start.getTime()) / 60000);
+    sessionStartRef.current = new Date();
+    if (minutes < 1) {
+      return;
+    }
+    recordStudyMinutes(toDateKey(new Date()), minutes).catch(() => {
+      // DB belum siap (inisialisasi native belum selesai): lewati pencatatan.
+    });
+  }, []);
 
   useEffect(() => {
     const session = new ChatSession(new MlcLlmEngine(), SYSTEM_PROMPT);
@@ -40,6 +61,19 @@ export default function ChatScreen() {
       sessionRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    sessionStartRef.current = new Date();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') {
+        flushStudyTime();
+      }
+    });
+    return () => {
+      subscription.remove();
+      flushStudyTime();
+    };
+  }, [flushStudyTime]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -73,9 +107,7 @@ export default function ChatScreen() {
   }, [input, loading]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior="height">
       <FlatList
         ref={listRef}
         style={styles.list}

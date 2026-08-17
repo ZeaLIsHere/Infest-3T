@@ -1,4 +1,9 @@
-import {CREATE_INDEXES_SQL, CREATE_TABLES_SQL, TABLES, VECTOR_EXTENSION_NAME} from '../schema';
+import {
+  CREATE_INDEXES_SQL,
+  CREATE_TABLES_SQL,
+  TABLES,
+  VECTOR_EXTENSION_NAME,
+} from '../schema';
 
 describe('schema database', () => {
   it('menyediakan semua tabel yang dibutuhkan MVP', () => {
@@ -15,8 +20,17 @@ describe('schema database', () => {
     }
   });
 
+  it('study_sessions memiliki UNIQUE pada kolom date untuk akumulasi', () => {
+    const statement = CREATE_TABLES_SQL.find(s =>
+      s.includes(TABLES.studySessions),
+    );
+    expect(statement).toContain('UNIQUE');
+  });
+
   it('chunks mereferensikan materials dengan ON DELETE CASCADE', () => {
-    const chunkTable = CREATE_TABLES_SQL.find(s => s.includes(TABLES.materialChunks));
+    const chunkTable = CREATE_TABLES_SQL.find(s =>
+      s.includes(TABLES.materialChunks),
+    );
     expect(chunkTable).toBeDefined();
     expect(chunkTable).toContain(`REFERENCES ${TABLES.materials}(id)`);
     expect(chunkTable).toContain('ON DELETE CASCADE');
@@ -24,7 +38,9 @@ describe('schema database', () => {
 
   it('menyediakan indeks untuk query streak & RAG', () => {
     expect(CREATE_INDEXES_SQL.join(' ')).toContain('idx_study_sessions_date');
-    expect(CREATE_INDEXES_SQL.join(' ')).toContain('idx_material_chunks_material');
+    expect(CREATE_INDEXES_SQL.join(' ')).toContain(
+      'idx_material_chunks_material',
+    );
   });
 
   it('memiliki nama ekstensi vektor sqlite-vec', () => {

@@ -14,7 +14,7 @@ let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 /** Buka koneksi database (singleton). */
 export function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
-    dbPromise = SQLite.openDatabase({name: DB_NAME, location: 'default'});
+    dbPromise = SQLite.openDatabase({name: DB_NAME});
   }
   return dbPromise;
 }

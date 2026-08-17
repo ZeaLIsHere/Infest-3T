@@ -14,7 +14,7 @@ export const TABLES = {
 export const CREATE_TABLES_SQL: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS ${TABLES.studySessions} (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT NOT NULL,
+    date TEXT NOT NULL UNIQUE,
     minutes INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );`,
