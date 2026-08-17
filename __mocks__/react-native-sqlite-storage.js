@@ -4,6 +4,8 @@
  */
 const studySessions = [];
 const syncQueue = [];
+const materials = [];
+const materialChunks = [];
 
 function rowsFrom(list) {
   return {
@@ -70,6 +72,40 @@ function executeSqlSync(sql, params = []) {
     return {rows: rowsFrom([]), insertId: 0, rowsAffected: removed};
   }
 
+  if (statement.startsWith('INSERT INTO materials')) {
+    materials.push({
+      title: params[0],
+      subject: params[1],
+      sourcePath: params[2],
+    });
+    return {rows: rowsFrom([]), insertId: materials.length, rowsAffected: 1};
+  }
+
+  if (statement.startsWith('INSERT INTO material_chunks')) {
+    materialChunks.push({
+      materialId: params[0],
+      chunkIndex: params[1],
+      content: params[2],
+      embedding: params[3],
+    });
+    return {
+      rows: rowsFrom([]),
+      insertId: materialChunks.length,
+      rowsAffected: 1,
+    };
+  }
+
+  if (
+    statement.startsWith('SELECT id, content, embedding FROM material_chunks')
+  ) {
+    const rows = materialChunks.map((chunk, index) => ({
+      id: index + 1,
+      content: chunk.content,
+      embedding: chunk.embedding,
+    }));
+    return {rows: rowsFrom(rows), insertId: 0, rowsAffected: rows.length};
+  }
+
   throw new Error(`Mock tidak mengenali statement: ${sql}`);
 }
 
@@ -85,5 +121,9 @@ module.exports = {
   },
   __resetSyncQueue: () => {
     syncQueue.length = 0;
+  },
+  __resetMaterials: () => {
+    materials.length = 0;
+    materialChunks.length = 0;
   },
 };

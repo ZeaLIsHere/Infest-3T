@@ -51,14 +51,25 @@ SYNC_API_URL=
 
 Fondasi JS/TS sudah terpasang: tooling (TS strict, ESLint, Prettier, Jest), skema
 database, logika inti (context window 512 token, klasifikasi RAM, streak,
-antrean sinkronisasi), dan UI MVP dark-mode. Semua modul native (MLC LLM,
-sqlite-vec, `android/`) sengaja dipisah di belakang kontrak (`LlmEngine`,
-`SyncTransport`) supaya bisa diuji tanpa build Android.
+antrean sinkronisasi HTTP saat online, dan core RAG: chunking + embedding +
+retrieval cosine), serta UI MVP dark-mode. Semua modul native (MLC LLM,
+TFLite USE Lite, sqlite-vec, `android/`) sengaja dipisah di belakang kontrak
+(`LlmEngine`, `EmbeddingProvider`, `SyncTransport`) supaya bisa diuji tanpa
+build Android.
+
+## Model embedding
+
+Default: **universal-sentence-encoder-lite (USE Lite, 128 dimensi)** — didukung
+resmi TFLite, ~23MB (muat RAM 2GB), embedding kalimat langsung cocok untuk
+retrieval per-chunk. Kekurangan: dominan bahasa Inggris. Karena dipisah di
+belakang `EmbeddingProvider`, bisa diganti (mis. IndoSBERT INT8 / MUSE untuk
+RAM ≥ 3GB) bila evaluasi kualitas bahasa Indonesia kurang memadai.
 
 ## Langkah berikutnya
 
 1. Scaffold native: jalankan `npx @react-native-community/cli init` untuk
    menghasilkan folder `android/` (API 26), lalu pasang dependensi native.
 2. Integrasi MLC LLM (fase 1): implementasi `LlmEngine` lewat modul native.
-3. Integrasi sqlite-vec (fase 2): muat `libvec` dan pipeline chunking buku teks.
-4. Implementasi transport sinkronisasi nyata terhadap `SYNC_API_URL`.
+3. Integrasi embedding TFLite (USE Lite) + sqlite-vec (fase 2): implementasi
+   `EmbeddingProvider`, memuat `libvec`, dan pipeline impor buku teks.
+4. Server endpoint sinkronisasi untuk `SYNC_API_URL` (format `{records}`).
